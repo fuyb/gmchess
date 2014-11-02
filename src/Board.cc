@@ -344,7 +344,7 @@ void Board::redraw_with_line(int mv,bool select)
 /**处理点击事件, handle the click events*/
 bool Board::on_button_press_event(GdkEventButton* ev)
 {
-	/** 对战状态下，电脑走棋时就不响应鼠标事件了*/
+	/** 对战状态下，对方走棋时就不响应鼠标事件了*/
 	/** if fight with AI, the compute doesn't handle the events */
 	if(is_fight_to_robot()||is_network_game()){
 		if(!is_human_player())
@@ -800,100 +800,98 @@ int Board::try_move(int mv)
 {
 	int eat = m_engine.get_move_eat(mv);
 	int dst=  m_engine.get_move_dst(mv);
+
 	/** 对着法进行逻辑检测*/
 	/** check the logic of the move */
-	if(m_engine.make_move(mv)){
-		/** 执行着法*/
-		//m_engine.do_move(mv);
-		/** 将着法中文表示加到treeview中*/
-		/**  and the chinese moves to treeview */
-		Glib::ustring mv_chin = m_engine.get_chinese_last_move();
-		int num = m_engine.how_step();
-		parent.add_step_line(num,mv_chin);
-		if(eat)
-			CSound::play(SND_EAT);
-		else
-			CSound::play(SND_MOVE);
+	if(!m_engine.make_move(mv)){
+        if (m_engine.get_checkby() && !is_human_player()) {
+            CSound::play(SND_CHECK);
+            return 0;
+        }
+    }
+    
+    /** 执行着法*/
+    //m_engine.do_move(mv);
+    /** 将着法中文表示加到treeview中*/
+    /**  and the chinese moves to treeview */
+    Glib::ustring mv_chin = m_engine.get_chinese_last_move();
+    int num = m_engine.how_step();
+    parent.add_step_line(num,mv_chin);
+    if(eat)
+        CSound::play(SND_EAT);
+    else
+        CSound::play(SND_MOVE);
 
-		redraw_with_line(mv,true);
-		selected_chessman = m_engine.get_piece(dst);
-		printf("move = %d finish move and redraw now\n",mv);
-		selected_chessman=-1;
+    redraw_with_line(mv,true);
+    selected_chessman = m_engine.get_piece(dst);
+    printf("move = %d finish move and redraw now\n",mv);
+    selected_chessman=-1;
 
-		std::string iccs_str=m_engine.move_to_iccs_str(mv);
-		/** 对战时的处理*/
-		if(is_fight_to_robot()){
-			if(eat){
-				moves_lines.clear();
-				moves_lines =postion_str+ m_engine.get_last_fen_from_snapshot()+std::string(" -- 0 1 ");
-			}
-			else{
-				size_t pos = moves_lines.find("moves");
-				if(pos == std::string::npos){
-					moves_lines=moves_lines + " -- 0 1  moves "+iccs_str;
-				}else{
-					moves_lines=moves_lines + " "+iccs_str;
-				}
+    std::string iccs_str=m_engine.move_to_iccs_str(mv);
+    /** 对战时的处理*/
+    if(is_fight_to_robot()){
+        if(eat){
+            moves_lines.clear();
+            moves_lines =postion_str+ m_engine.get_last_fen_from_snapshot()+std::string(" -- 0 1 ");
+        }
+        else{
+            size_t pos = moves_lines.find("moves");
+            if(pos == std::string::npos){
+                moves_lines=moves_lines + " -- 0 1  moves "+iccs_str;
+            }else{
+                moves_lines=moves_lines + " "+iccs_str;
+            }
 
-			}
-			/** then send the moves_lines to ucci engine(robot)*/
-			std::cout<<"moves_lines = "<<moves_lines<<std::endl;
-			m_robot.send_ctrl_command(moves_lines.c_str());
-			m_robot.send_ctrl_command("\n");
-			//user_player = 1-user_player;
-			if(!is_human_player()){
-				//Glib::ustring str_cmd="go time "+to_msec_ustring(black_time)+" increment 0\n";
-				//Glib::ustring str_cmd=Glib::ustring("go depth ")+search_depth+"\n";
-				char str_cmd[256];
-				sprintf(str_cmd,"go depth %d \n",m_search_depth);
-				m_robot.send_ctrl_command(str_cmd);
-				//m_robot.send_ctrl_command("go time 295000 increment 0\n");
-			}
-
-
-			parent.change_play(is_human_player());
-			count_time=0;
-		}
-		else if(is_network_game()){
-
-			if(!is_human_player()){
-			/** 我走的棋，则将iccs_str走法传给网络*/
-				printf("my go\n");
-				std::string mv_str = "moves:"+iccs_str;
-				send_to_socket(mv_str);
+        }
+        /** then send the moves_lines to ucci engine(robot)*/
+        std::cout<<"moves_lines = "<<moves_lines<<std::endl;
+        m_robot.send_ctrl_command(moves_lines.c_str());
+        m_robot.send_ctrl_command("\n");
+        //user_player = 1-user_player;
+        if(!is_human_player()){
+            //Glib::ustring str_cmd="go time "+to_msec_ustring(black_time)+" increment 0\n";
+            //Glib::ustring str_cmd=Glib::ustring("go depth ")+search_depth+"\n";
+            char str_cmd[256];
+            sprintf(str_cmd,"go depth %d \n",m_search_depth);
+            m_robot.send_ctrl_command(str_cmd);
+            //m_robot.send_ctrl_command("go time 295000 increment 0\n");
+        }
 
 
-			}
-			parent.change_play(is_human_player());
-			count_time=0;
+        parent.change_play(is_human_player());
+        count_time=0;
+    } else if(is_network_game()){
+        if(!is_human_player()){
+            /** 我走的棋，则将iccs_str走法传给网络*/
+            printf("my go\n");
+            std::string mv_str = "moves:"+iccs_str;
+            send_to_socket(mv_str);
 
-		}
-		parent.set_comment("");
 
-		/**被将死了*/
-		/** is it  mate */
-		if(m_engine.mate() && is_human_player() ){
-			if(timer.connected())
-				timer.disconnect();
-			CSound::play(SND_CHECK);
-			parent.on_end_game(ROBOT_WIN);
-			parent.set_comment("不要气馁，再接再大励吧!");
-			DLOG("将军死棋\n");
-			return 0;
-		}
-		if(m_engine.get_checkby()){
-			CSound::play(SND_CHECK);
-			DLOG("将军===============\n");
-			if(is_human_player())
-				parent.set_comment("您被将军了，小心噢!");
-			else
-				parent.set_comment("将军，干得好，看好你噢!");
-		}
+        }
+        parent.change_play(is_human_player());
+        count_time=0;
+    }
+    parent.set_comment("");
 
-	}
+    /**被将死了*/
+    /** is it  mate */
+    if(m_engine.mate() && is_human_player() ){
+        CSound::play(SND_CHECK);
+        DLOG("将军死棋!!!@_@\n");
+        parent.set_comment("将军死棋!!!@_@");
+        parent.set_comment("不要气馁，再接再励吧!");
+        parent.enable_new_game();
+    } else if(m_engine.get_checkby()){
+        CSound::play(SND_CHECK);
+        DLOG("将军!!!!!!!\n");
+        if(is_human_player())
+            parent.set_comment("您被将军了，小心哦!");
+        else
+            parent.set_comment("将军，干得好，看好你哦!");
+    }
 
 	return 0;
-
 }
 
 void Board::draw_move()

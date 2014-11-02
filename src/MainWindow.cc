@@ -362,6 +362,11 @@ bool MainWindow::on_foreach_iter(const Gtk::TreeModel::iterator iter)
 
 }
 
+void MainWindow::enable_new_game()
+{
+    btn_begin->set_sensitive(true);
+}
+
 void MainWindow::on_next_move()
 {
 	board->next_move();
@@ -873,7 +878,7 @@ void MainWindow::set_information()
 void MainWindow::set_status()
 {
 	int f_status = board->get_status();
-	bool f_use=1;
+	bool f_use=true;
 
 	switch(f_status){
 		case READ_STATUS:
@@ -883,18 +888,18 @@ void MainWindow::set_status()
 			btn_end->set_sensitive(f_use);
 
 			btn_begin->set_sensitive(f_use);
-			btn_lose->set_sensitive(1-f_use);
-			btn_draw->set_sensitive(1-f_use);
-			btn_rue->set_sensitive(1-f_use);
+			btn_lose->set_sensitive(!f_use);
+			btn_draw->set_sensitive(!f_use);
+			btn_rue->set_sensitive(!f_use);
 			break;
 		case FIGHT_STATUS:
 		case NETWORK_STATUS:
-			btn_next->set_sensitive(1-f_use);
-			btn_prev->set_sensitive(1-f_use);
-			btn_start->set_sensitive(1-f_use);
-			btn_end->set_sensitive(1-f_use);
+			btn_next->set_sensitive(!f_use);
+			btn_prev->set_sensitive(!f_use);
+			btn_start->set_sensitive(!f_use);
+			btn_end->set_sensitive(!f_use);
 
-			btn_begin->set_sensitive(1-f_use);
+			btn_begin->set_sensitive(!f_use);
 			btn_lose->set_sensitive(f_use);
 			btn_draw->set_sensitive(f_use);
 			btn_rue->set_sensitive(f_use);
@@ -906,9 +911,9 @@ void MainWindow::set_status()
 			btn_end->set_sensitive(f_use);
 
 			btn_begin->set_sensitive(f_use);
-			btn_lose->set_sensitive(1-f_use);
-			btn_draw->set_sensitive(1-f_use);
-			btn_rue->set_sensitive(1-f_use);
+			btn_lose->set_sensitive(!f_use);
+			btn_draw->set_sensitive(!f_use);
+			btn_rue->set_sensitive(!f_use);
 			break;
 		default:
 			break;
@@ -984,42 +989,26 @@ void MainWindow::on_begin_game()
 	/** 已经在对战中，则询问是否开始新游戏*/
 	/** ask if start new game */
 	if(board->is_fight_to_robot()){
-
 		Gtk::MessageDialog dialog(*this, _("new game"), false,
                                   Gtk::MESSAGE_QUESTION,
                                   Gtk::BUTTONS_OK_CANCEL);
 		Glib::ustring msg =_("Will you  start a new game?");
 		dialog.set_secondary_text(msg);
 		int result = dialog.run();
-		switch (result) {
-			case (Gtk::RESPONSE_OK): {
-				m_refTreeModel->clear();
-				board->new_game();
-                	        break;
-                	}
-
-			case (Gtk::RESPONSE_CANCEL): {
-                	        break;
-                	}
-
-			default: {
-                	        break;
-                	}
-		}
-		return;
-
-	}
-	else if(board->is_network_game()){
+		if (result != Gtk::RESPONSE_OK )
+            return;
+        m_refTreeModel->clear();
+        board->new_game();
+	} else if(board->is_network_game()){
 		Gtk::MessageDialog dialog_info(*this, _("Information"), false);
 		Glib::ustring msg =_("You are play with network game,Please over it first!");
 		dialog_info.set_secondary_text(msg);
 		dialog_info.run();
-		return ;
-
-	}
-	m_refTreeModel->clear();
-	board->start_robot();
-	set_status();
+	} else {
+        m_refTreeModel->clear();
+        board->start_robot();
+    }
+    set_status();
 	btn_begin->set_sensitive(false);
 }
 

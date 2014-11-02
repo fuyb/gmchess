@@ -36,6 +36,8 @@ class MainWindow:public Gtk::Window
 	public:
 		MainWindow();
 		~MainWindow();
+        /** show begin button */
+        void enable_new_game();
 		/** 回到最初局面*/
 		void on_first_move();
 		/** 去到最后的局面*/
