@@ -806,8 +806,8 @@ int Board::try_move(int mv)
 	if(!m_engine.make_move(mv)){
         if (m_engine.get_checkby() && !is_human_player()) {
             CSound::play(SND_CHECK);
-            return 0;
         }
+        return 0;
     }
     
     /** 执行着法*/
