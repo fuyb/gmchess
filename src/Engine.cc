@@ -509,7 +509,7 @@ bool Engine::mate()
 				case RED_KNIGHT:
 				case BLACK_KNIGHT:
 					for(int k=0;k<8;k++){
-						dst=src+ KingMoveTab[k];
+						dst=src+ KnightMoveTab[k];
 						if(in_board(dst)){
 							int mv = get_move(src,dst);
 							if(make_move(mv)){
